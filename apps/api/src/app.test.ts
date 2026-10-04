@@ -93,3 +93,10 @@ describe("api (mock mode)", () => {
     await withToken.close();
   });
 });
+
+describe("url tolerance", () => {
+  it("accepts a duplicated leading slash from a trailing-slash API_URL", async () => {
+    const res = await app.inject({ method: "GET", url: "//accounts" });
+    expect(res.statusCode).toBe(200);
+  });
+});

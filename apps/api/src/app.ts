@@ -22,6 +22,8 @@ export async function buildApp(env: Env) {
   const app = Fastify({
     logger: env.NODE_ENV === "test" ? false : { transport: env.NODE_ENV === "development" ? { target: "pino-pretty" } : undefined },
     bodyLimit: 2 * 1024 * 1024,
+    ignoreTrailingSlash: true,
+    ignoreDuplicateSlashes: true,
   });
   const ctx = createContext(env);
 
