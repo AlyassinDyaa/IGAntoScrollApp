@@ -64,7 +64,9 @@ export default async function inboxRoutes(app: FastifyInstance, ctx: AppContext)
     const [conversation, account] = await Promise.all([store.getConversation(body.data.conversationId), store.getAccount(body.data.accountId)]);
     if (!conversation || !account) return reply.code(404).send({ error: "Conversation or account not found" });
     if (conversation.accountId !== account.id) return reply.code(400).send({ error: "This conversation belongs to a different account" });
-    const message = await gateway.sendText(account, conversation, body.data.text);
+    const message = body.data.imageUrl
+      ? await gateway.sendImage(account, conversation, body.data.imageUrl, body.data.text)
+      : await gateway.sendText(account, conversation, body.data.text.trim());
     await store.appendMessage(message);
     return { message, sentAs: { id: account.id, username: account.username, label: account.label } };
   });

@@ -63,11 +63,15 @@ export const ConversationSchema = z.object({
 });
 export type Conversation = z.infer<typeof ConversationSchema>;
 
-export const SendMessageInputSchema = z.object({
-  accountId: z.string(),
-  conversationId: z.string(),
-  text: z.string().min(1).max(1000),
-});
+export const SendMessageInputSchema = z
+  .object({
+    accountId: z.string(),
+    conversationId: z.string(),
+    text: z.string().max(1000).default(""),
+    /** Public HTTPS URL of an uploaded image to send instead of / alongside text. */
+    imageUrl: z.string().url().optional(),
+  })
+  .refine((v) => v.text.trim().length > 0 || !!v.imageUrl, { message: "Message text or an image is required" });
 export type SendMessageInput = z.infer<typeof SendMessageInputSchema>;
 
 export const ReactInputSchema = z.object({

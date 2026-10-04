@@ -26,6 +26,18 @@ export class MockGateway implements MetaGateway {
       sentAt: new Date().toISOString(),
     };
   }
+  async sendImage(_account: ConnectedAccount, conversation: Conversation, imageUrl: string, text: string): Promise<Message> {
+    await delay(200);
+    return {
+      id: `mock_${Date.now()}`,
+      conversationId: conversation.id,
+      fromMe: true,
+      text: text || null,
+      attachments: [{ kind: "image", url: imageUrl, permalink: null, thumbnailUrl: imageUrl }],
+      reactions: [],
+      sentAt: new Date().toISOString(),
+    };
+  }
   async react(): Promise<void> { await delay(60); }
 
   async searchAudio(_account: ConnectedAccount, query: string): Promise<AudioTrack[]> {

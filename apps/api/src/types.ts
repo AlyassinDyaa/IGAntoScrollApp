@@ -65,6 +65,7 @@ export interface MetaGateway {
   syncConversations(account: ConnectedAccount): Promise<Conversation[]>;
   syncMessages(account: ConnectedAccount, conversation: Conversation): Promise<Message[]>;
   sendText(account: ConnectedAccount, conversation: Conversation, text: string): Promise<Message>;
+  sendImage(account: ConnectedAccount, conversation: Conversation, imageUrl: string, text: string): Promise<Message>;
   react(account: ConnectedAccount, conversation: Conversation, messageId: string, emoji: string, action: "react" | "unreact"): Promise<void>;
 
   searchAudio(account: ConnectedAccount, query: string): Promise<AudioTrack[]>;

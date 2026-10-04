@@ -16,6 +16,7 @@ import {
   reactToMessage,
   replyToComment,
   searchAudio,
+  sendImageMessage,
   sendTextMessage,
   type GraphMessage,
 } from "@ig-focus-hub/meta";
@@ -77,6 +78,21 @@ export class GraphGateway implements MetaGateway {
       fromMe: true,
       text,
       attachments: [],
+      reactions: [],
+      sentAt: new Date().toISOString(),
+    };
+  }
+
+  async sendImage(account: ConnectedAccount, conversation: Conversation, imageUrl: string, text: string): Promise<Message> {
+    const token = await this.tokens.pageToken(account.id);
+    const res = await sendImageMessage(this.client, account.igUserId, token, conversation.participant.igUserId, imageUrl);
+    if (text.trim()) await sendTextMessage(this.client, account.igUserId, token, conversation.participant.igUserId, text.trim());
+    return {
+      id: res.message_id,
+      conversationId: conversation.id,
+      fromMe: true,
+      text: text.trim() || null,
+      attachments: [{ kind: "image", url: imageUrl, permalink: null, thumbnailUrl: imageUrl }],
       reactions: [],
       sentAt: new Date().toISOString(),
     };

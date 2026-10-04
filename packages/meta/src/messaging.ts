@@ -104,3 +104,20 @@ export async function reactToMessage(
     pageToken,
   );
 }
+
+export async function sendImageMessage(
+  client: MetaClient,
+  igUserId: string,
+  pageToken: string,
+  recipientIgsid: string,
+  imageUrl: string,
+): Promise<{ recipient_id: string; message_id: string }> {
+  return client.post(
+    `${igUserId}/messages`,
+    {
+      recipient: JSON.stringify({ id: recipientIgsid }),
+      message: JSON.stringify({ attachment: { type: "image", payload: { url: imageUrl } } }),
+    },
+    pageToken,
+  );
+}

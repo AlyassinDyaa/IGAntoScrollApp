@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Film, Heart, Info, Star } from "lucide-react";
+import { Camera, Film, Heart, Info, Star } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ConnectedAccount, Conversation, CrmLabel, Message, SavedReply } from "@ig-focus-hub/shared";
 import { CRM_LABEL_TEXT } from "@ig-focus-hub/shared";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/TopBar";
 import { AccountBadge, Button, Chip, ChipRow, ErrorNote, Sheet, Spinner, Toggle } from "@/components/ui";
-import { patch, post, useApi } from "@/lib/api";
+import { API_URL, patch, post, useApi } from "@/lib/api";
 
 interface ThreadResponse {
   conversation: Conversation;
@@ -18,6 +18,7 @@ interface ThreadResponse {
   privateNote: string | null;
 }
 
+/** Instagram DM thread: profile summary on top, bubbles, blue camera composer with quick ❤️. */
 export function ThreadScreen({ conversationId }: { conversationId: string }) {
   const router = useRouter();
   const thread = useApi<ThreadResponse>(`/inbox/conversations/${conversationId}`);
@@ -28,6 +29,7 @@ export function ThreadScreen({ conversationId }: { conversationId: string }) {
   const [sent, setSent] = useState(false);
   const [details, setDetails] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const messageCount = thread.data?.messages.length ?? 0;
 
   useEffect(() => {
@@ -39,18 +41,35 @@ export function ThreadScreen({ conversationId }: { conversationId: string }) {
   const account = data?.account;
   const name = conv?.participant.name ?? conv?.participant.username ?? "";
 
-  async function send() {
-    if (!conv || !account || !text.trim()) return;
+  async function send(body: { text?: string; imageUrl?: string }) {
+    if (!conv || !account) return;
     setSending(true);
     setError(null);
     try {
-      const res = await post<{ message: Message }>("/inbox/messages", { accountId: account.id, conversationId: conv.id, text: text.trim() });
+      const res = await post<{ message: Message }>("/inbox/messages", { accountId: account.id, conversationId: conv.id, text: body.text ?? "", imageUrl: body.imageUrl });
       thread.mutate((prev) => (prev ? { ...prev, messages: [...prev.messages, res.message], conversation: { ...prev.conversation, needsReply: false } } : prev));
       setText("");
       setSent(true);
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      setSending(false);
+    }
+  }
+
+  async function sendPhoto(file: File | undefined) {
+    if (!file) return;
+    setSending(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`${API_URL}/media/upload`, { method: "POST", body: form, credentials: "include" });
+      if (!res.ok) throw new Error("Upload failed");
+      const { url } = (await res.json()) as { url: string };
+      await send({ text: text.trim(), imageUrl: url });
+    } catch (e) {
+      setError((e as Error).message);
       setSending(false);
     }
   }
@@ -84,13 +103,15 @@ export function ThreadScreen({ conversationId }: { conversationId: string }) {
         title={
           <span className="inline-flex items-center gap-2">
             {conv ? <Avatar name={name} src={conv.participant.avatarUrl} size={28} accent={account?.accent ?? null} /> : null}
-            {name}
+            <span className="flex flex-col items-start leading-tight">
+              <span>{name}</span>
+              {conv ? <span className="text-[11px] font-normal text-ig-text-secondary">{conv.participant.username}</span> : null}
+            </span>
           </span>
         }
-        subtitle={conv ? `@${conv.participant.username}` : undefined}
         right={
-          <button type="button" onClick={() => setDetails(true)} aria-label="Conversation details" className="flex size-9 items-center justify-center">
-            <Info size={24} strokeWidth={1.75} />
+          <button type="button" onClick={() => setDetails(true)} aria-label="Conversation details" className="flex size-9 items-center justify-center active:opacity-60">
+            <Info size={26} strokeWidth={1.75} />
           </button>
         }
       />
@@ -99,24 +120,35 @@ export function ThreadScreen({ conversationId }: { conversationId: string }) {
       {!data ? (
         <div className="flex flex-1 justify-center py-10"><Spinner /></div>
       ) : (
-        <div className="flex-1 space-y-1 px-4 py-4">
-          {data.messages.map((m, i) => (
-            <Bubble
-              key={m.id}
-              message={m}
-              conversationId={conversationId}
-              showTime={i === 0 || new Date(m.sentAt).getTime() - new Date(data.messages[i - 1]!.sentAt).getTime() > 30 * 60_000}
-              onReact={() => react(m)}
-            />
-          ))}
+        <div className="flex-1 px-4 py-4">
+          {conv ? (
+            <div className="mb-6 flex flex-col items-center gap-1 pt-4 text-center">
+              <Avatar name={name} src={conv.participant.avatarUrl} size={96} accent={account?.accent ?? null} />
+              <p className="mt-2 text-base font-semibold">{name}</p>
+              <p className="text-xs text-ig-text-secondary">{conv.participant.username} · Instagram</p>
+              {account ? <div className="mt-1"><AccountBadge account={account} prefix="Talking to " /></div> : null}
+              <button type="button" onClick={() => setDetails(true)} className="mt-2 h-8 rounded-ig bg-ig-secondary-button px-4 text-sm font-semibold active:opacity-70">Details</button>
+            </div>
+          ) : null}
+          <div className="space-y-1">
+            {data.messages.map((m, i) => (
+              <Bubble
+                key={m.id}
+                message={m}
+                conversationId={conversationId}
+                showTime={i === 0 || new Date(m.sentAt).getTime() - new Date(data.messages[i - 1]!.sentAt).getTime() > 30 * 60_000}
+                onReact={() => react(m)}
+              />
+            ))}
+          </div>
           <div ref={bottomRef} />
         </div>
       )}
 
-      <div className="sticky bottom-[calc(var(--tabbar-height)+var(--safe-bottom))] border-t border-ig-separator-elevated bg-ig-bg md:bottom-0">
+      <div className="sticky bottom-[calc(var(--tabbar-height)+var(--safe-bottom))] bg-ig-bg md:bottom-0">
         {sent ? (
-          <div className="flex items-center justify-between bg-ig-bg-secondary px-4 py-2 text-xs">
-            <span className="text-ig-text-secondary">Reply sent.</span>
+          <div className="flex items-center justify-between border-t border-ig-separator-elevated px-4 py-2 text-xs">
+            <span className="text-ig-text-secondary">Sent as {account?.username}.</span>
             <Link href="/inbox" className="font-semibold text-ig-primary">Back to Inbox</Link>
           </div>
         ) : null}
@@ -127,24 +159,28 @@ export function ThreadScreen({ conversationId }: { conversationId: string }) {
             ))}
           </ChipRow>
         ) : null}
-        {account ? (
-          <div className="flex items-center gap-2 px-4 pb-1 text-xs text-ig-text-secondary">
-            <AccountBadge account={account} prefix="Replying as " />
-          </div>
-        ) : null}
+        {account ? <div className="px-4 pb-1 text-[11px] text-ig-text-secondary">Replying as <span className="font-semibold text-ig-text">{account.username}</span></div> : null}
         {error ? <ErrorNote message={error} /> : null}
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void sendPhoto(e.target.files?.[0])} />
         <form
-          className="flex items-center gap-2 px-4 pt-1 pb-3"
+          className="flex items-center gap-2 px-3 pt-1 pb-3"
           onSubmit={(e) => {
             e.preventDefault();
-            void send();
+            if (text.trim()) void send({ text: text.trim() });
           }}
         >
-          <div className="flex h-11 flex-1 items-center rounded-pill border border-ig-separator px-4">
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message..." className="w-full bg-transparent text-sm outline-none placeholder:text-ig-text-secondary" disabled={!account} />
-            <button type="submit" disabled={!text.trim() || sending || !account} className="ml-2 text-sm font-semibold text-ig-primary disabled:opacity-40">
-              {sending ? "…" : "Send"}
+          <div className="flex h-11 flex-1 items-center gap-2 rounded-pill border border-ig-separator pr-3 pl-1.5">
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={!account || sending} aria-label="Send a photo" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ig-primary text-white active:opacity-70 disabled:opacity-40">
+              <Camera size={18} strokeWidth={2} />
             </button>
+            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message..." className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ig-text-secondary" disabled={!account} />
+            {text.trim() ? (
+              <button type="submit" disabled={sending || !account} className="text-sm font-semibold text-ig-primary disabled:opacity-40">{sending ? "…" : "Send"}</button>
+            ) : (
+              <button type="button" onClick={() => void send({ text: "❤️" })} disabled={sending || !account} aria-label="Send a heart" className="text-ig-text active:opacity-60 disabled:opacity-40">
+                <Heart size={24} strokeWidth={1.75} />
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -155,7 +191,7 @@ export function ThreadScreen({ conversationId }: { conversationId: string }) {
             <div className="flex flex-col items-center gap-2">
               <Avatar name={name} src={conv.participant.avatarUrl} size={80} accent={account?.accent ?? null} />
               <p className="text-base font-semibold">{name}</p>
-              <p className="text-xs text-ig-text-secondary">@{conv.participant.username}{account ? ` · via @${account.username}` : ""}</p>
+              <p className="text-xs text-ig-text-secondary">{conv.participant.username}{account ? ` · via ${account.username}` : ""}</p>
             </div>
             <label className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-sm"><Star size={18} /> Favorite</span>
@@ -166,7 +202,7 @@ export function ThreadScreen({ conversationId }: { conversationId: string }) {
               <Toggle checked={conv.priority} onChange={(v) => void update({ priority: v })} label="Priority" />
             </label>
             <label className="flex items-center justify-between">
-              <span className="text-sm">Mute locally</span>
+              <span className="text-sm">Mute messages</span>
               <Toggle checked={conv.mutedLocally} onChange={(v) => void update({ mutedLocally: v })} label="Mute" />
             </label>
             <label className="flex items-center justify-between">
@@ -185,13 +221,7 @@ export function ThreadScreen({ conversationId }: { conversationId: string }) {
             </div>
             <div>
               <p className="mb-2 text-sm font-semibold">Private note</p>
-              <textarea
-                defaultValue={data?.privateNote ?? ""}
-                onBlur={(e) => void update({ privateNote: e.target.value || null })}
-                placeholder="Only you can see this."
-                rows={3}
-                className="w-full rounded-ig border border-ig-separator bg-transparent p-3 text-sm outline-none"
-              />
+              <textarea defaultValue={data?.privateNote ?? ""} onBlur={(e) => void update({ privateNote: e.target.value || null })} placeholder="Only you can see this." rows={3} className="w-full rounded-ig border border-ig-separator bg-transparent p-3 text-sm outline-none" />
             </div>
             <Button variant="secondary" block onClick={() => router.push("/inbox")}>Back to Inbox</Button>
           </div>
@@ -206,7 +236,7 @@ function Bubble({ message: m, conversationId, showTime, onReact }: { message: Me
   const media = m.attachments.find((a) => a.kind === "image" || a.kind === "video");
   return (
     <div>
-      {showTime ? <p className="py-3 text-center text-[11px] text-ig-text-secondary">{new Date(m.sentAt).toLocaleString(undefined, { hour: "numeric", minute: "2-digit", weekday: "short" })}</p> : null}
+      {showTime ? <p className="py-3 text-center text-[11px] font-semibold text-ig-text-secondary">{new Date(m.sentAt).toLocaleString(undefined, { hour: "numeric", minute: "2-digit", weekday: "short" })}</p> : null}
       <div className={`flex ${m.fromMe ? "justify-end" : "justify-start"}`}>
         <div className="group relative max-w-[75%]">
           {reel ? (
@@ -215,12 +245,12 @@ function Bubble({ message: m, conversationId, showTime, onReact }: { message: Me
                 <Film size={36} strokeWidth={1.5} />
               </div>
               <div className="px-3 py-2 text-xs">
-                <p className="font-semibold">{reel.kind === "reel" ? "Sent you a Reel" : "Shared a post"}</p>
+                <p className="font-semibold">{reel.kind === "reel" ? "Sent you a reel" : "Shared a post"}</p>
                 <p className="text-ig-text-secondary">Opens only this {reel.kind}. No feed.</p>
               </div>
             </Link>
           ) : media ? (
-            <div className="w-56 overflow-hidden rounded-2xl border border-ig-separator">
+            <div className="w-56 overflow-hidden rounded-2xl">
               {media.kind === "video" ? (
                 <video src={media.url ?? undefined} controls playsInline className="w-full" />
               ) : media.url ? (
@@ -230,7 +260,7 @@ function Bubble({ message: m, conversationId, showTime, onReact }: { message: Me
             </div>
           ) : null}
           {m.text ? (
-            <button type="button" onDoubleClick={onReact} className={`block rounded-[22px] px-4 py-2 text-left text-sm ${m.fromMe ? "bg-ig-bubble-mine text-white" : "bg-ig-bubble-theirs text-ig-text"}`}>
+            <button type="button" onDoubleClick={onReact} className={`block rounded-[22px] px-4 py-2 text-left text-[15px] leading-5 ${m.fromMe ? "bg-ig-bubble-mine text-white" : "bg-ig-bubble-theirs text-ig-text"}`}>
               {m.text}
             </button>
           ) : null}

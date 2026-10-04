@@ -174,3 +174,68 @@ export function Sheet({ open, onClose, title, children, footer }: { open: boolea
     </div>
   );
 }
+
+// ------------------------------------------------- Instagram settings-style row --
+
+export function ListRow({
+  icon,
+  label,
+  value,
+  onClick,
+  href,
+  chevron = true,
+  danger,
+  right,
+}: {
+  icon?: ReactNode;
+  label: ReactNode;
+  value?: ReactNode;
+  onClick?: () => void;
+  href?: string;
+  chevron?: boolean;
+  danger?: boolean;
+  right?: ReactNode;
+}) {
+  const inner = (
+    <>
+      {icon ? <span className="flex w-7 shrink-0 justify-center text-ig-text">{icon}</span> : null}
+      <span className={`min-w-0 flex-1 truncate text-left text-[15px] ${danger ? "text-ig-error" : ""}`}>{label}</span>
+      {value ? <span className="max-w-[45%] truncate text-sm text-ig-text-secondary">{value}</span> : null}
+      {right}
+      {chevron && (onClick || href) ? <span className="text-ig-text-secondary">›</span> : null}
+    </>
+  );
+  const cls = "flex w-full items-center gap-3 px-4 py-3 active:bg-ig-bg-highlight";
+  if (href) return <a href={href} className={cls}>{inner}</a>;
+  if (onClick) return <button type="button" onClick={onClick} className={cls}>{inner}</button>;
+  return <div className={cls}>{inner}</div>;
+}
+
+export function SectionLabel({ children }: { children: ReactNode }) {
+  return <p className="px-4 pt-5 pb-1 text-xs font-semibold text-ig-text-secondary">{children}</p>;
+}
+
+/** Instagram profile-style icon tabs with an underline on the active tab. */
+export function IconTabs<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string; icon: ReactNode }[]; onChange: (v: T) => void }) {
+  return (
+    <div role="tablist" className="flex border-t border-ig-separator-elevated">
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            role="tab"
+            type="button"
+            aria-selected={active}
+            aria-label={o.label}
+            onClick={() => onChange(o.value)}
+            className={`relative flex h-11 flex-1 items-center justify-center ${active ? "text-ig-text" : "text-ig-text-secondary"}`}
+          >
+            {o.icon}
+            {active ? <span className="absolute inset-x-0 -top-px h-px bg-ig-text" /> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
