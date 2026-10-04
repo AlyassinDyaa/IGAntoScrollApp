@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/* Instagram-matching tokens. Mirrors packages/shared/src/design-tokens */
+/* ------------------------------------------------------------------ */
+:root {
+  /* Dark is the default theme. Light is available by setting data-theme="light" on <html>. */
+  --ig-bg: #000000;
+  --ig-bg-secondary: #121212;
+  --ig-bg-highlight: #262626;
+  --ig-text: #fafafa;
+  --ig-text-secondary: #a8a8a8;
+  --ig-separator: #262626;
+  --ig-separator-elevated: #363636;
+  --ig-primary: #0095f6;
+  --ig-primary-hover: #1877f2;
+  --ig-secondary-button: #363636;
+  --ig-link: #e0f1ff;
+  --ig-error: #ed4956;
+  --ig-badge: #ff3040;
+  --ig-success: #1cb850;
+  --ig-bubble-mine: #3797f0;
+  --ig-bubble-theirs: #262626;
+  --ig-gradient: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+
+  --accent-pink: #e1306c;
+  --accent-purple: #833ab4;
+  --accent-orange: #f77737;
+  --accent-blue: #0095f6;
+  --accent-green: #1cb850;
+
+  --tabbar-height: 50px;
+  --topbar-height: 44px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --ig-bg: #ffffff;
+  --ig-bg-secondary: #fafafa;
+  --ig-bg-highlight: #efefef;
+  --ig-text: #262626;
+  --ig-text-secondary: #8e8e8e;
+  --ig-separator: #dbdbdb;
+  --ig-separator-elevated: #efefef;
+  --ig-secondary-button: #efefef;
+  --ig-link: #00376b;
+  --ig-bubble-theirs: #efefef;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-ig-bg: var(--ig-bg);
+  --color-ig-bg-secondary: var(--ig-bg-secondary);
+  --color-ig-bg-highlight: var(--ig-bg-highlight);
+  --color-ig-text: var(--ig-text);
+  --color-ig-text-secondary: var(--ig-text-secondary);
+  --color-ig-separator: var(--ig-separator);
+  --color-ig-separator-elevated: var(--ig-separator-elevated);
+  --color-ig-primary: var(--ig-primary);
+  --color-ig-primary-hover: var(--ig-primary-hover);
+  --color-ig-secondary-button: var(--ig-secondary-button);
+  --color-ig-link: var(--ig-link);
+  --color-ig-error: var(--ig-error);
+  --color-ig-badge: var(--ig-badge);
+  --color-ig-success: var(--ig-success);
+  --color-ig-bubble-mine: var(--ig-bubble-mine);
+  --color-ig-bubble-theirs: var(--ig-bubble-theirs);
+  --color-accent-pink: var(--accent-pink);
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-orange: var(--accent-orange);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-green: var(--accent-green);
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  --radius-ig: 8px;
+  --radius-pill: 22px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--ig-bg);
+  color: var(--ig-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 18px;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* IG never shows outlines on tap, but keyboard users still get focus rings. */
+:focus-visible {
+  outline: 2px solid var(--ig-primary);
+  outline-offset: 2px;
+}
+
+/* Story-style gradient ring around an avatar. */
+.ig-ring {
+  background: var(--ig-gradient);
+  padding: 2px;
+  border-radius: 9999px;
+}
+.ig-ring > * {
+  border: 2px solid var(--ig-bg);
+  border-radius: 9999px;
+}
+
+.ig-gradient-text {
+  background: var(--ig-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Instagram-style thin separators between list rows. */
+.ig-divider {
+  border-bottom: 1px solid var(--ig-separator-elevated);
+}
+
+/* Range inputs for Trim / Volume sheets. */
+input[type="range"].ig-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2px;
+  background: var(--ig-separator);
+  border-radius: 2px;
+}
+input[type="range"].ig-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--ig-bg);
+  border: 1px solid var(--ig-separator);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.animate-sheet-up {
+  animation: sheet-up 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}

@@ -1,0 +1,41 @@
+{
+  "name": "@ig-focus-hub/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "tsx --env-file-if-exists=../../.env src/server.ts",
+    "worker": "tsx --env-file-if-exists=../../.env src/worker.ts",
+    "vapid": "tsx src/scripts/vapid.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/multipart": "^10.1.2",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/static": "^10.1.5",
+    "@ig-focus-hub/db": "workspace:*",
+    "@ig-focus-hub/meta": "workspace:*",
+    "@ig-focus-hub/shared": "workspace:*",
+    "bullmq": "^6.3.11",
+    "fastify": "^5.12.5",
+    "ioredis": "^6.0.0",
+    "pino": "^10.4.0",
+    "pino-pretty": "^13.1.3",
+    "web-push": "^3.6.7",
+    "zod": "^4.6.5",
+    "fastify-plugin": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "@types/web-push": "^3.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  }
+}

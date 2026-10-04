@@ -1,0 +1,273 @@
+// IG Focus Hub data model.
+// Security: Instagram passwords are never stored. Access tokens are AES-256-GCM
+// encrypted before they reach this database (see src/crypto.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------- owner ----
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  accounts          IgAccount[]
+  savedReplies      SavedReply[]
+  drafts            Draft[]
+  pushSubscriptions PushSubscription[]
+  quietHours        QuietHours?
+  mediaAssets       MediaAsset[]
+}
+
+// ------------------------------------------------------------- accounts ----
+
+enum AccountStatus {
+  active
+  needs_reauth
+  disconnected
+}
+
+enum AccountAccent {
+  pink
+  purple
+  orange
+  blue
+  green
+}
+
+model IgAccount {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  igUserId       String        @unique
+  pageId         String
+  username       String
+  displayName    String
+  label          String
+  accent         AccountAccent
+  avatarUrl      String?
+  // Encrypted page access token (never expires once derived from long-lived user token).
+  pageTokenEnc   String
+  // Encrypted long-lived user token; used to refresh page tokens and revoke on disconnect.
+  userTokenEnc   String
+  tokenExpiresAt DateTime?
+  status         AccountStatus @default(active)
+  connectedAt    DateTime      @default(now())
+
+  conversations     Conversation[]
+  scheduledPosts    ScheduledPost[]
+  notificationPrefs NotificationPrefs?
+  webhookEvents     WebhookEvent[]
+  comments          CommentCache[]
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------- inbox ----
+
+enum CrmLabel {
+  lead
+  customer
+  quote_sent
+  waiting_for_customer
+  order_issue
+  follow_up
+  completed
+}
+
+model Conversation {
+  id                 String    @id // Graph conversation id
+  accountId          String
+  account            IgAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  participantIgsid   String
+  participantName    String?
+  participantUser    String
+  participantAvatar  String?
+  lastMessagePreview String    @default("")
+  lastMessageAt      DateTime
+  unreadCount        Int       @default(0)
+  needsReply         Boolean   @default(false)
+  favorite           Boolean   @default(false)
+  mutedLocally       Boolean   @default(false)
+  priority           Boolean   @default(false)
+  labels             CrmLabel[]
+  privateNote        String?
+
+  messages Message[]
+
+  @@index([accountId, lastMessageAt(sort: Desc)])
+  @@index([accountId, needsReply])
+}
+
+model Message {
+  id             String       @id // Graph message id (mid)
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  fromMe         Boolean
+  text           String?
+  attachments    Json         @default("[]")
+  reactions      Json         @default("[]")
+  sentAt         DateTime
+
+  @@index([conversationId, sentAt(sort: Desc)])
+}
+
+model SavedReply {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title    String
+  body     String
+  shortcut String?
+
+  @@index([userId])
+}
+
+// ----------------------------------------------------------- publishing ----
+
+enum PostType {
+  image
+  video
+  reel
+  carousel
+}
+
+model MediaAsset {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        String // image | video
+  mimeType    String
+  byteSize    Int
+  width       Int?
+  height      Int?
+  durationSec Float?
+  // Object storage key; public HTTPS URL is derived at publish time.
+  storageKey  String
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Draft {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId          String?
+  type               PostType
+  caption            String   @default("")
+  mediaAssetIds      String[]
+  edits              Json
+  audioTrackId       String?
+  originalAudioTitle String?
+  shareToFeed        Boolean  @default(true)
+  locationId         String?
+  userTags           Json     @default("[]")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  scheduledPosts ScheduledPost[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+enum ScheduleStatus {
+  scheduled
+  uploading
+  processing
+  published
+  failed
+  cancelled
+}
+
+model ScheduledPost {
+  id          String         @id @default(cuid())
+  draftId     String
+  draft       Draft          @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  accountId   String
+  account     IgAccount      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  publishAt   DateTime
+  status      ScheduleStatus @default(scheduled)
+  containerId String?
+  igMediaId   String?
+  permalink   String?
+  attempts    Int            @default(0)
+  lastError   String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status, publishAt])
+  @@index([accountId, publishAt(sort: Desc)])
+}
+
+// ------------------------------------------------------------- business ----
+
+model CommentCache {
+  id             String    @id // Graph comment id
+  accountId      String
+  account        IgAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  mediaId        String
+  mediaThumbnail String?
+  username       String
+  text           String
+  createdAt      DateTime
+  replied        Boolean   @default(false)
+  hidden         Boolean   @default(false)
+
+  @@index([accountId, replied, createdAt(sort: Desc)])
+}
+
+// -------------------------------------------------------- notifications ----
+
+model NotificationPrefs {
+  accountId String    @id
+  account   IgAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  enabled   Boolean   @default(true)
+  // { new_dm: true, sent_reel: true, reaction: false, comment: true, mention: true, publish_result: true }
+  kinds     Json
+}
+
+model QuietHours {
+  userId                String  @id
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enabled               Boolean @default(false)
+  start                 String  @default("22:00")
+  end                   String  @default("08:00")
+  allowPriorityContacts Boolean @default(true)
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------- webhooks ----
+
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  accountId   String?
+  account     IgAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  kind        String
+  payload     Json
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  error       String?
+
+  @@index([processedAt])
+}

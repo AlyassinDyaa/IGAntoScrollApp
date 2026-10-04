@@ -1,0 +1,23 @@
+# Render Blueprint: one-click API hosting (free tier, mock mode).
+# https://render.com/deploy?repo=https://github.com/AlyassinDyaa/IGAntoScrollApp
+services:
+  - type: web
+    name: ig-focus-hub-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: MOCK_META
+        value: "1"
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      # Optional: set to your Vercel URL to lock CORS down once you leave mock mode.
+      - key: WEB_URL
+        sync: false
