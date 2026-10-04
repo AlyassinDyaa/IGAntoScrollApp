@@ -15,7 +15,8 @@
     "studio": "prisma studio",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "build": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3"
