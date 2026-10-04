@@ -15,10 +15,22 @@ const ACCENTS: AccountAccent[] = ["pink", "purple", "orange", "blue", "green"];
  *   GET /auth/meta/callback  -> exchange code, upgrade to long-lived, list linked IG accounts
  *   POST /auth/meta/select   -> store chosen accounts (max 3) with encrypted tokens
  */
+/** Where to send the browser back: the web origin that opened the flow, else WEB_URL. */
+function webOrigin(req: { headers: Record<string, string | string[] | undefined> }, fallback: string): string {
+  const ref = req.headers.referer ?? req.headers.origin;
+  const value = Array.isArray(ref) ? ref[0] : ref;
+  if (!value) return fallback;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return fallback;
+  }
+}
+
 export default async function metaOauthRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get("/auth/meta/start", { preHandler: app.requireUser }, async (req, reply) => {
     if (ctx.env.MOCK_META || !ctx.metaClient) {
-      return reply.redirect(`${ctx.env.WEB_URL}/settings?connected=mock`);
+      return reply.redirect(`${webOrigin(req, ctx.env.WEB_URL)}/settings?connected=mock`);
     }
     const state = randomBytes(16).toString("hex");
     reply.setCookie(STATE_COOKIE, state, { httpOnly: true, sameSite: "lax", path: "/auth/meta", maxAge: 600, secure: ctx.env.NODE_ENV === "production" });

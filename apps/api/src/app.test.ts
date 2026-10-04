@@ -100,3 +100,11 @@ describe("url tolerance", () => {
     expect(res.statusCode).toBe(200);
   });
 });
+
+describe("mock connect flow", () => {
+  it("redirects back to the calling web origin", async () => {
+    const res = await app.inject({ method: "GET", url: "/auth/meta/start", headers: { referer: "https://igclone.vercel.app/settings" } });
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe("https://igclone.vercel.app/settings?connected=mock");
+  });
+});
